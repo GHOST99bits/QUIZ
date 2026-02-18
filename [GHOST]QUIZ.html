@@ -620,59 +620,24 @@
             }
         }
 
-        /** Debounce helper for saving */
-        let saveTimeout = null;
-        function debouncedSave() {
-            if (saveTimeout) clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(() => {
-                saveQuiz();
-            }, 300); // 300ms delay
-        }
-
-        async function saveQuiz() {
+        function saveQuiz() {
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(quizData));
-                $saveStatus.textContent = `Saving...`;
-                
-                const response = await fetch('/api/quiz', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(quizData)
-                });
-                
-                if (response.ok) {
-                    $saveStatus.textContent = `Saved to DB at ${new Date().toLocaleTimeString()}`;
-                } else {
-                    $saveStatus.textContent = `Saved locally at ${new Date().toLocaleTimeString()}`;
-                }
+                $saveStatus.textContent = `Saved at ${new Date().toLocaleTimeString()}`;
             } catch (e) {
                 console.error('Save failed:', e);
-                $saveStatus.textContent = `Saved locally at ${new Date().toLocaleTimeString()}`;
+                $saveStatus.textContent = 'Save failed';
             }
         }
 
-        async function loadQuiz() {
+        function loadQuiz() {
             try {
-                // Try database first
-                const response = await fetch('/api/quiz');
-                if (response.ok) {
-                    const dbData = await response.json();
-                    if (dbData && dbData.data && dbData.data.questions && dbData.data.questions.length > 0) {
-                        quizData = dbData.data;
-                        $saveStatus.textContent = 'Loaded from DB';
-                    } else {
-                        // Fallback to local storage if DB is empty
-                        const stored = localStorage.getItem(STORAGE_KEY);
-                        if (stored) {
-                            quizData = JSON.parse(stored);
-                            $saveStatus.textContent = 'Loaded from storage';
-                        }
-                    }
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    quizData = JSON.parse(stored);
                 }
             } catch (e) {
                 console.error('Load failed:', e);
-                const stored = localStorage.getItem(STORAGE_KEY);
-                if (stored) quizData = JSON.parse(stored);
             }
             
             $titleInput.value = quizData.title || 'New Quiz';
@@ -680,6 +645,7 @@
             renderColorPicker();
             updateAccentStyle(quizData.accentColor || 'Violet');
             setActiveTab(activeTab);
+            $saveStatus.textContent = 'Loaded successfully';
         }
 
         function renderColorPicker() {
@@ -882,14 +848,14 @@
         function setupListeners() {
             $titleInput.addEventListener('input', () => {
                 quizData.title = $titleInput.value;
-                debouncedSave();
+                saveQuiz();
             });
 
             $editorQuestionText.addEventListener('input', () => {
                 if (currentQuestionIndex !== -1) {
                     quizData.questions[currentQuestionIndex].text = $editorQuestionText.value;
                     renderQuizStructure();
-                    debouncedSave();
+                    saveQuiz();
                 }
             });
         }
@@ -923,7 +889,7 @@
             });
 
             renderQuestionEditor(currentQuestion);
-            debouncedSave();
+            saveQuiz();
         }
 
         function updateAnswerText(optionId, newText) {
@@ -933,7 +899,7 @@
             const option = currentQuestion.options.find(opt => opt.id === optionId);
             if (option) {
                 option.text = newText;
-                debouncedSave();
+                saveQuiz();
             }
         }
 
